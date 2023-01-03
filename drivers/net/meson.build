@@ -53,6 +53,7 @@ drivers = [
         'ring',
         'sfc',
         'softnic',
+        'stmmac',
         'tap',
         'thunderx',
         'txgbe',

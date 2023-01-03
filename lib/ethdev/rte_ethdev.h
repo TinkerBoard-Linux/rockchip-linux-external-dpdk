@@ -1708,8 +1708,8 @@ struct rte_eth_conf {
  * These are used if an application requests default parameters
  * but the PMD does not provide preferred values.
  */
-#define RTE_ETH_DEV_FALLBACK_RX_RINGSIZE 512
-#define RTE_ETH_DEV_FALLBACK_TX_RINGSIZE 512
+#define RTE_ETH_DEV_FALLBACK_RX_RINGSIZE 1024
+#define RTE_ETH_DEV_FALLBACK_TX_RINGSIZE 1024
 #define RTE_ETH_DEV_FALLBACK_RX_NBQUEUES 1
 #define RTE_ETH_DEV_FALLBACK_TX_NBQUEUES 1
 
