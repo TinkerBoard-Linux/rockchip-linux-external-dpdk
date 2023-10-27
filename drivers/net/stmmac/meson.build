@@ -13,5 +13,6 @@ sources = files(
         'dwmac4_lib.c',
         'dwmac4_core.c',
         'dwmac4_dma.c',
-        'dwmac4_descs.c'
+        'dwmac4_descs.c',
+	'mmc_core.c'
 )

@@ -60,7 +60,7 @@ static void dwmac4_core_init(struct mac_device_info *hw,
 {
 
 	void *ioaddr = hw->pcsr;
-	uint32_t value = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+	uint32_t value = readl(ioaddr + GMAC_CONFIG);
 
 	ioaddr = priv->ioaddr_v;
 	value |= GMAC_CORE_INIT;
@@ -82,7 +82,7 @@ static void dwmac4_core_init(struct mac_device_info *hw,
 		}
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_CONFIG);
+	writel(value, ioaddr + GMAC_CONFIG);
 
 	/* Enable GMAC interrupts */
 	value = GMAC_INT_DEFAULT_ENABLE;
@@ -90,14 +90,14 @@ static void dwmac4_core_init(struct mac_device_info *hw,
 	if (hw->pcs)
 		value |= GMAC_PCS_IRQ_DEFAULT;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_INT_EN);
+	writel(value, ioaddr + GMAC_INT_EN);
 }
 
 static void dwmac4_rx_queue_enable(struct mac_device_info *hw,
 				   uint8_t mode, uint32_t queue)
 {
 	void *ioaddr = hw->pcsr;
-	uint32_t value = rte_read32((uint8_t *)ioaddr + GMAC_RXQ_CTRL0);
+	uint32_t value = readl(ioaddr + GMAC_RXQ_CTRL0);
 
 	value &= GMAC_RX_QUEUE_CLEAR(queue);
 	if (mode == MTL_QUEUE_AVB)
@@ -105,7 +105,7 @@ static void dwmac4_rx_queue_enable(struct mac_device_info *hw,
 	else if (mode == MTL_QUEUE_DCB)
 		value |= GMAC_RX_DCB_QUEUE_ENABLE(queue);
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_RXQ_CTRL0);
+	writel(value, ioaddr + GMAC_RXQ_CTRL0);
 }
 
 static void dwmac4_rx_queue_priority(struct mac_device_info *hw,
@@ -119,12 +119,12 @@ static void dwmac4_rx_queue_priority(struct mac_device_info *hw,
 	if (queue >= 4)
 		queue -= 4;
 
-	value = rte_read32((uint8_t *)ioaddr + base_register);
+	value = readl(ioaddr + base_register);
 
 	value &= ~GMAC_RXQCTRL_PSRQX_MASK(queue);
 	value |= (prio << GMAC_RXQCTRL_PSRQX_SHIFT(queue)) &
 						GMAC_RXQCTRL_PSRQX_MASK(queue);
-	rte_write32(value, (uint8_t *)ioaddr + base_register);
+	writel(value, ioaddr + base_register);
 }
 
 static void dwmac4_tx_queue_priority(struct mac_device_info *hw,
@@ -138,13 +138,13 @@ static void dwmac4_tx_queue_priority(struct mac_device_info *hw,
 	if (queue >= 4)
 		queue -= 4;
 
-	value = rte_read32((uint8_t *)ioaddr + base_register);
+	value = readl(ioaddr + base_register);
 
 	value &= ~GMAC_TXQCTRL_PSTQX_MASK(queue);
 	value |= (prio << GMAC_TXQCTRL_PSTQX_SHIFT(queue)) &
 						GMAC_TXQCTRL_PSTQX_MASK(queue);
 
-	rte_write32(value, (uint8_t *)ioaddr + base_register);
+	writel(value, ioaddr + base_register);
 }
 
 static void dwmac4_rx_queue_routing(struct mac_device_info *hw,
@@ -161,7 +161,7 @@ static void dwmac4_rx_queue_routing(struct mac_device_info *hw,
 		{ GMAC_RXQCTRL_MCBCQ_MASK, GMAC_RXQCTRL_MCBCQ_SHIFT },
 	};
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_RXQ_CTRL1);
+	value = readl(ioaddr + GMAC_RXQ_CTRL1);
 
 	/* routing configuration */
 	value &= ~route_possibilities[packet - 1].reg_mask;
@@ -177,14 +177,14 @@ static void dwmac4_rx_queue_routing(struct mac_device_info *hw,
 		value |= 0x1 << GMAC_RXQCTRL_MCBCQEN_SHIFT;
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_RXQ_CTRL1);
+	writel(value, ioaddr + GMAC_RXQ_CTRL1);
 }
 
 static void dwmac4_prog_mtl_rx_algorithms(struct mac_device_info *hw,
 					  uint32_t rx_alg)
 {
 	void *ioaddr = hw->pcsr;
-	uint32_t value = rte_read32((uint8_t *)ioaddr + MTL_OPERATION_MODE);
+	uint32_t value = readl(ioaddr + MTL_OPERATION_MODE);
 
 	value &= ~MTL_OPERATION_RAA;
 	switch (rx_alg) {
@@ -198,14 +198,14 @@ static void dwmac4_prog_mtl_rx_algorithms(struct mac_device_info *hw,
 		break;
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + MTL_OPERATION_MODE);
+	writel(value, ioaddr + MTL_OPERATION_MODE);
 }
 
 static void dwmac4_prog_mtl_tx_algorithms(struct mac_device_info *hw,
 					  uint32_t tx_alg)
 {
 	void *ioaddr = hw->pcsr;
-	uint32_t value = rte_read32((uint8_t *)ioaddr + MTL_OPERATION_MODE);
+	uint32_t value = readl(ioaddr + MTL_OPERATION_MODE);
 
 	value &= ~MTL_OPERATION_SCHALG_MASK;
 	switch (tx_alg) {
@@ -225,18 +225,18 @@ static void dwmac4_prog_mtl_tx_algorithms(struct mac_device_info *hw,
 		break;
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + MTL_OPERATION_MODE);
+	writel(value, ioaddr + MTL_OPERATION_MODE);
 }
 
 static void dwmac4_set_mtl_tx_queue_weight(struct mac_device_info *hw,
 					   uint32_t weight, uint32_t queue)
 {
 	void *ioaddr = hw->pcsr;
-	uint32_t value = rte_read32((uint8_t *)ioaddr + MTL_TXQX_WEIGHT_BASE_ADDR(queue));
+	uint32_t value = readl(ioaddr + MTL_TXQX_WEIGHT_BASE_ADDR(queue));
 
 	value &= ~MTL_TXQ_WEIGHT_ISCQW_MASK;
 	value |= weight & MTL_TXQ_WEIGHT_ISCQW_MASK;
-	rte_write32(value, (uint8_t *)ioaddr + MTL_TXQX_WEIGHT_BASE_ADDR(queue));
+	writel(value, ioaddr + MTL_TXQX_WEIGHT_BASE_ADDR(queue));
 }
 
 static void dwmac4_map_mtl_dma(struct mac_device_info *hw, uint32_t queue, uint32_t chan)
@@ -245,9 +245,9 @@ static void dwmac4_map_mtl_dma(struct mac_device_info *hw, uint32_t queue, uint3
 	uint32_t value;
 
 	if (queue < 4)
-		value = rte_read32((uint8_t *)ioaddr + MTL_RXQ_DMA_MAP0);
+		value = readl(ioaddr + MTL_RXQ_DMA_MAP0);
 	else
-		value = rte_read32((uint8_t *)ioaddr + MTL_RXQ_DMA_MAP1);
+		value = readl(ioaddr + MTL_RXQ_DMA_MAP1);
 
 	if (queue == 0 || queue == 4) {
 		value &= ~MTL_RXQ_DMA_Q04MDMACH_MASK;
@@ -258,9 +258,9 @@ static void dwmac4_map_mtl_dma(struct mac_device_info *hw, uint32_t queue, uint3
 	}
 
 	if (queue < 4)
-		rte_write32(value, (uint8_t *)ioaddr + MTL_RXQ_DMA_MAP0);
+		writel(value, ioaddr + MTL_RXQ_DMA_MAP0);
 	else
-		rte_write32(value, (uint8_t *)ioaddr + MTL_RXQ_DMA_MAP1);
+		writel(value, ioaddr + MTL_RXQ_DMA_MAP1);
 }
 
 static void dwmac4_config_cbs(struct mac_device_info *hw,
@@ -277,31 +277,31 @@ static void dwmac4_config_cbs(struct mac_device_info *hw,
 	STMMAC_PMD_INFO("\tlow_credit: 0x%08x\n", low_credit);
 
 	/* enable AV algorithm */
-	value = rte_read32((uint8_t *)ioaddr + MTL_ETSX_CTRL_BASE_ADDR(queue));
+	value = readl(ioaddr + MTL_ETSX_CTRL_BASE_ADDR(queue));
 	value |= MTL_ETS_CTRL_AVALG;
 	value |= MTL_ETS_CTRL_CC;
-	rte_write32(value, (uint8_t *)ioaddr + MTL_ETSX_CTRL_BASE_ADDR(queue));
+	writel(value, ioaddr + MTL_ETSX_CTRL_BASE_ADDR(queue));
 
 	/* configure send slope */
-	value = rte_read32((uint8_t *)ioaddr + MTL_SEND_SLP_CREDX_BASE_ADDR(queue));
+	value = readl(ioaddr + MTL_SEND_SLP_CREDX_BASE_ADDR(queue));
 	value &= ~MTL_SEND_SLP_CRED_SSC_MASK;
 	value |= send_slope & MTL_SEND_SLP_CRED_SSC_MASK;
-	rte_write32(value, (uint8_t *)ioaddr + MTL_SEND_SLP_CREDX_BASE_ADDR(queue));
+	writel(value, ioaddr + MTL_SEND_SLP_CREDX_BASE_ADDR(queue));
 
 	/* configure idle slope (same register as tx weight) */
 	dwmac4_set_mtl_tx_queue_weight(hw, idle_slope, queue);
 
 	/* configure high credit */
-	value = rte_read32((uint8_t *)ioaddr + MTL_HIGH_CREDX_BASE_ADDR(queue));
+	value = readl(ioaddr + MTL_HIGH_CREDX_BASE_ADDR(queue));
 	value &= ~MTL_HIGH_CRED_HC_MASK;
 	value |= high_credit & MTL_HIGH_CRED_HC_MASK;
-	rte_write32(value, (uint8_t *)ioaddr + MTL_HIGH_CREDX_BASE_ADDR(queue));
+	writel(value, ioaddr + MTL_HIGH_CREDX_BASE_ADDR(queue));
 
 	/* configure high credit */
-	value = rte_read32((uint8_t *)ioaddr + MTL_LOW_CREDX_BASE_ADDR(queue));
+	value = readl(ioaddr + MTL_LOW_CREDX_BASE_ADDR(queue));
 	value &= ~MTL_HIGH_CRED_LC_MASK;
 	value |= low_credit & MTL_HIGH_CRED_LC_MASK;
-	rte_write32(value, (uint8_t *)ioaddr + MTL_LOW_CREDX_BASE_ADDR(queue));
+	writel(value, ioaddr + MTL_LOW_CREDX_BASE_ADDR(queue));
 }
 
 static void dwmac4_dump_regs(struct mac_device_info *hw, uint32_t *reg_space)
@@ -310,22 +310,22 @@ static void dwmac4_dump_regs(struct mac_device_info *hw, uint32_t *reg_space)
 	int i;
 
 	for (i = 0; i < GMAC_REG_NUM; i++)
-		reg_space[i] = rte_read32((uint8_t *)ioaddr + i * 4);
+		reg_space[i] = readl(ioaddr + i * 4);
 }
 
 static int dwmac4_rx_ipc_enable(struct mac_device_info *hw)
 {
 	void *ioaddr = hw->pcsr;
-	uint32_t value = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+	uint32_t value = readl(ioaddr + GMAC_CONFIG);
 
 	if (hw->rx_csum)
 		value |= GMAC_CONFIG_IPC;
 	else
 		value &= ~GMAC_CONFIG_IPC;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_CONFIG);
+	writel(value, ioaddr + GMAC_CONFIG);
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+	value = readl(ioaddr + GMAC_CONFIG);
 
 	return !!(value & GMAC_CONFIG_IPC);
 }
@@ -347,11 +347,11 @@ static void dwmac4_pmt(struct mac_device_info *hw, unsigned long mode)
 
 	if (pmt) {
 		/* The receiver must be enabled for WOL before powering down */
-		config = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+		config = readl(ioaddr + GMAC_CONFIG);
 		config |= GMAC_CONFIG_RE;
-		rte_write32(config, (uint8_t *)ioaddr + GMAC_CONFIG);
+		writel(config, ioaddr + GMAC_CONFIG);
 	}
-	rte_write32(pmt, (uint8_t *)ioaddr + GMAC_PMT);
+	writel(pmt, ioaddr + GMAC_PMT);
 }
 
 static void dwmac4_set_umac_addr(struct mac_device_info *hw,
@@ -382,13 +382,13 @@ static void dwmac4_set_eee_mode(struct mac_device_info *hw,
 	 * receive path and instruct the transmit to enter in LPI
 	 * state.
 	 */
-	value = rte_read32((uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+	value = readl(ioaddr + GMAC4_LPI_CTRL_STATUS);
 	value |= GMAC4_LPI_CTRL_STATUS_LPIEN | GMAC4_LPI_CTRL_STATUS_LPITXA;
 
 	if (en_tx_lpi_clockgating)
 		value |= GMAC4_LPI_CTRL_STATUS_LPITCSE;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+	writel(value, ioaddr + GMAC4_LPI_CTRL_STATUS);
 }
 
 static void dwmac4_reset_eee_mode(struct mac_device_info *hw)
@@ -396,9 +396,9 @@ static void dwmac4_reset_eee_mode(struct mac_device_info *hw)
 	void *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+	value = readl(ioaddr + GMAC4_LPI_CTRL_STATUS);
 	value &= ~(GMAC4_LPI_CTRL_STATUS_LPIEN | GMAC4_LPI_CTRL_STATUS_LPITXA);
-	rte_write32(value, (uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+	writel(value, ioaddr + GMAC4_LPI_CTRL_STATUS);
 }
 
 static void dwmac4_set_eee_pls(struct mac_device_info *hw, int link)
@@ -406,14 +406,14 @@ static void dwmac4_set_eee_pls(struct mac_device_info *hw, int link)
 	void *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+	value = readl(ioaddr + GMAC4_LPI_CTRL_STATUS);
 
 	if (link)
 		value |= GMAC4_LPI_CTRL_STATUS_PLS;
 	else
 		value &= ~GMAC4_LPI_CTRL_STATUS_PLS;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+	writel(value, ioaddr + GMAC4_LPI_CTRL_STATUS);
 }
 
 static void dwmac4_set_eee_timer(struct mac_device_info *hw, int ls, int tw)
@@ -428,7 +428,7 @@ static void dwmac4_set_eee_timer(struct mac_device_info *hw, int ls, int tw)
 	 * TW: minimum time (us) for which the core waits
 	 *  after it has stopped transmitting the LPI pattern.
 	 */
-	rte_write32(value, (uint8_t *)ioaddr + GMAC4_LPI_TIMER_CTRL);
+	writel(value, ioaddr + GMAC4_LPI_TIMER_CTRL);
 }
 
 static void dwmac4_write_single_vlan(struct stmmac_private *priv, uint16_t vid)
@@ -436,11 +436,11 @@ static void dwmac4_write_single_vlan(struct stmmac_private *priv, uint16_t vid)
 	void *ioaddr = (void  *)priv->ioaddr_v;
 	uint32_t val;
 
-	val = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_TAG);
+	val = readl(ioaddr + GMAC_VLAN_TAG);
 	val &= ~GMAC_VLAN_TAG_VID;
 	val |= GMAC_VLAN_TAG_ETV | vid;
 
-	rte_write32(val, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+	writel(val, ioaddr + GMAC_VLAN_TAG);
 }
 
 static int dwmac4_write_vlan_filter(struct stmmac_private *priv,
@@ -454,18 +454,18 @@ static int dwmac4_write_vlan_filter(struct stmmac_private *priv,
 	if (index >= hw->num_vlan)
 		return -EINVAL;
 
-	rte_write32(data, (uint8_t *)ioaddr + GMAC_VLAN_TAG_DATA);
+	writel(data, ioaddr + GMAC_VLAN_TAG_DATA);
 
-	val = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_TAG);
+	val = readl(ioaddr + GMAC_VLAN_TAG);
 	val &= ~(GMAC_VLAN_TAG_CTRL_OFS_MASK |
 		GMAC_VLAN_TAG_CTRL_CT |
 		GMAC_VLAN_TAG_CTRL_OB);
 	val |= (index << GMAC_VLAN_TAG_CTRL_OFS_SHIFT) | GMAC_VLAN_TAG_CTRL_OB;
 
-	rte_write32(val, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+	writel(val, ioaddr + GMAC_VLAN_TAG);
 
 	for (i = 0; i < timeout; i++) {
-		val = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		val = readl(ioaddr + GMAC_VLAN_TAG);
 		if (!(val & GMAC_VLAN_TAG_CTRL_OB))
 			return 0;
 		rte_delay_us(1);
@@ -596,12 +596,12 @@ static void dwmac4_vlan_promisc_enable(struct stmmac_private *priv,
 		}
 	}
 
-	hash = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_HASH_TABLE);
+	hash = readl(ioaddr + GMAC_VLAN_HASH_TABLE);
 	if (hash & GMAC_VLAN_VLHT) {
-		value = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		value = readl(ioaddr + GMAC_VLAN_TAG);
 		if (value & GMAC_VLAN_VTHM) {
 			value &= ~GMAC_VLAN_VTHM;
-			rte_write32(value, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+			writel(value, ioaddr + GMAC_VLAN_TAG);
 		}
 	}
 }
@@ -629,11 +629,11 @@ static void dwmac4_restore_hw_vlan_rx_fltr(struct stmmac_private *priv,
 		}
 	}
 
-	hash = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_HASH_TABLE);
+	hash = readl(ioaddr + GMAC_VLAN_HASH_TABLE);
 	if (hash & GMAC_VLAN_VLHT) {
-		value = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		value = readl(ioaddr + GMAC_VLAN_TAG);
 		value |= GMAC_VLAN_VTHM;
-		rte_write32(value, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		writel(value, ioaddr + GMAC_VLAN_TAG);
 	}
 }
 
@@ -652,7 +652,7 @@ static void dwmac4_set_filter(struct mac_device_info *hw,
 
 	memset(mc_filter, 0, sizeof(mc_filter));
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_PACKET_FILTER);
+	value = readl(ioaddr + GMAC_PACKET_FILTER);
 	value &= ~GMAC_PACKET_FILTER_HMC;
 	value &= ~GMAC_PACKET_FILTER_HPF;
 	value &= ~GMAC_PACKET_FILTER_PCF;
@@ -663,11 +663,11 @@ static void dwmac4_set_filter(struct mac_device_info *hw,
 	if (priv->flags & IFF_PROMISC) {
 		/* VLAN Tag Filter Fail Packets Queuing */
 		if (hw->vlan_fail_q_en) {
-			value = rte_read32((uint8_t *)ioaddr + GMAC_RXQ_CTRL4);
+			value = readl(ioaddr + GMAC_RXQ_CTRL4);
 			value &= ~GMAC_RXQCTRL_VFFQ_MASK;
 			value |= GMAC_RXQCTRL_VFFQE |
 				 (hw->vlan_fail_q << GMAC_RXQCTRL_VFFQ_SHIFT);
-			rte_write32(value, (uint8_t *)ioaddr + GMAC_RXQ_CTRL4);
+			writel(value, ioaddr + GMAC_RXQ_CTRL4);
 			value = GMAC_PACKET_FILTER_PR | GMAC_PACKET_FILTER_RA;
 		} else {
 			value = GMAC_PACKET_FILTER_PR | GMAC_PACKET_FILTER_PCF;
@@ -699,7 +699,7 @@ static void dwmac4_set_filter(struct mac_device_info *hw,
 	}
 
 	for (i = 0; i < numhashregs; i++)
-		rte_write32(mc_filter[i], (uint8_t *)ioaddr + GMAC_HASH_TAB(i));
+		writel(mc_filter[i], ioaddr + GMAC_HASH_TAB(i));
 
 	value |= GMAC_PACKET_FILTER_HPF;
 
@@ -719,8 +719,8 @@ static void dwmac4_set_filter(struct mac_device_info *hw,
 		}
 
 		while (reg < GMAC_MAX_PERFECT_ADDRESSES) {
-			rte_write32(0, (uint8_t *)ioaddr + GMAC_ADDR_HIGH(reg));
-			rte_write32(0, (uint8_t *)ioaddr + GMAC_ADDR_LOW(reg));
+			writel(0, ioaddr + GMAC_ADDR_HIGH(reg));
+			writel(0, ioaddr + GMAC_ADDR_LOW(reg));
 			reg++;
 		}
 	}
@@ -729,7 +729,7 @@ static void dwmac4_set_filter(struct mac_device_info *hw,
 	if (priv->features & STMMAC_HW_VLAN_CTAG_FILTER)
 		value |= GMAC_PACKET_FILTER_VTFE;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_PACKET_FILTER);
+	writel(value, ioaddr + GMAC_PACKET_FILTER);
 
 	if (priv->flags & IFF_PROMISC && !hw->vlan_fail_q_en) {
 		if (!hw->promisc) {
@@ -757,7 +757,7 @@ static void dwmac4_flow_ctrl(struct mac_device_info *hw, unsigned int duplex,
 		STMMAC_PMD_INFO("\tReceive Flow-Control ON\n");
 		flow |= GMAC_RX_FLOW_CTRL_RFE;
 	}
-	rte_write32(flow, (uint8_t *)ioaddr + GMAC_RX_FLOW_CTRL);
+	writel(flow, ioaddr + GMAC_RX_FLOW_CTRL);
 
 	if (fc & FLOW_TX) {
 		STMMAC_PMD_INFO("\tTransmit Flow-Control ON\n");
@@ -772,11 +772,11 @@ static void dwmac4_flow_ctrl(struct mac_device_info *hw, unsigned int duplex,
 				flow |=
 				(pause_time << GMAC_TX_FLOW_CTRL_PT_SHIFT);
 
-			rte_write32(flow, (uint8_t *)ioaddr + GMAC_QX_TX_FLOW_CTRL(queue));
+			writel(flow, ioaddr + GMAC_QX_TX_FLOW_CTRL(queue));
 		}
 	} else {
 		for (queue = 0; queue < tx_cnt; queue++)
-			rte_write32(0, (uint8_t *)ioaddr + GMAC_QX_TX_FLOW_CTRL(queue));
+			writel(0, ioaddr + GMAC_QX_TX_FLOW_CTRL(queue));
 	}
 }
 
@@ -786,17 +786,17 @@ static int dwmac4_irq_mtl_status(struct mac_device_info *hw, uint32_t chan)
 	uint32_t mtl_int_qx_status;
 	int ret = 0;
 
-	mtl_int_qx_status = rte_read32((uint8_t *)ioaddr + MTL_INT_STATUS);
+	mtl_int_qx_status = readl(ioaddr + MTL_INT_STATUS);
 
 	/* Check MTL Interrupt */
 	if (mtl_int_qx_status & MTL_INT_QX(chan)) {
 		/* read Queue x Interrupt status */
-		uint32_t status = rte_read32((uint8_t *)ioaddr + MTL_CHAN_INT_CTRL(chan));
+		uint32_t status = readl(ioaddr + MTL_CHAN_INT_CTRL(chan));
 
 		if (status & MTL_RX_OVERFLOW_INT) {
 			/*  clear Interrupt */
-			rte_write32(status | MTL_RX_OVERFLOW_INT,
-			       (uint8_t *)ioaddr + MTL_CHAN_INT_CTRL(chan));
+			writel(status | MTL_RX_OVERFLOW_INT,
+			       ioaddr + MTL_CHAN_INT_CTRL(chan));
 			ret = CORE_IRQ_MTL_RX_OVERFLOW;
 		}
 	}
@@ -808,8 +808,8 @@ static int dwmac4_irq_status(struct mac_device_info *hw,
 			     struct stmmac_extra_stats *x)
 {
 	void  *ioaddr = hw->pcsr;
-	uint32_t intr_status = rte_read32((uint8_t *)ioaddr + GMAC_INT_STATUS);
-	uint32_t intr_enable = rte_read32((uint8_t *)ioaddr + GMAC_INT_EN);
+	uint32_t intr_status = readl(ioaddr + GMAC_INT_STATUS);
+	uint32_t intr_enable = readl(ioaddr + GMAC_INT_EN);
 	int ret = 0;
 
 	/* Discard disabled bits */
@@ -824,14 +824,14 @@ static int dwmac4_irq_status(struct mac_device_info *hw,
 		x->mmc_rx_csum_offload_irq_n++;
 	/* Clear the PMT bits 5 and 6 by reading the PMT status reg */
 	if (unlikely(intr_status & pmt_irq)) {
-		rte_read32((uint8_t *)ioaddr + GMAC_PMT);
+		readl(ioaddr + GMAC_PMT);
 		x->irq_receive_pmt_irq_n++;
 	}
 
 	/* MAC tx/rx EEE LPI entry/exit interrupts */
 	if (intr_status & lpi_irq) {
 		/* Clear LPI interrupt by reading MAC_LPI_Control_Status */
-		uint32_t status = rte_read32((uint8_t *)ioaddr + GMAC4_LPI_CTRL_STATUS);
+		uint32_t status = readl(ioaddr + GMAC4_LPI_CTRL_STATUS);
 
 		if (status & GMAC4_LPI_CTRL_STATUS_TLPIEN) {
 			ret |= CORE_IRQ_TX_PATH_IN_LPI_MODE;
@@ -857,7 +857,7 @@ static void dwmac4_debug(void *ioaddr , struct stmmac_extra_stats *x,
 	uint32_t queue;
 
 	for (queue = 0; queue < tx_queues; queue++) {
-		value = rte_read32((uint8_t *)ioaddr + MTL_CHAN_TX_DEBUG(queue));
+		value = readl(ioaddr + MTL_CHAN_TX_DEBUG(queue));
 
 		if (value & MTL_DEBUG_TXSTSFSTS)
 			x->mtl_tx_status_fifo_full++;
@@ -882,7 +882,7 @@ static void dwmac4_debug(void *ioaddr , struct stmmac_extra_stats *x,
 	}
 
 	for (queue = 0; queue < rx_queues; queue++) {
-		value = rte_read32((uint8_t *)ioaddr + MTL_CHAN_RX_DEBUG(queue));
+		value = readl(ioaddr + MTL_CHAN_RX_DEBUG(queue));
 
 		if (value & MTL_DEBUG_RXFSTS_MASK) {
 			uint32_t rxfsts = (value & MTL_DEBUG_RXFSTS_MASK)
@@ -915,7 +915,7 @@ static void dwmac4_debug(void *ioaddr , struct stmmac_extra_stats *x,
 	}
 
 	/* GMAC debug */
-	value = rte_read32((uint8_t *)ioaddr + GMAC_DEBUG);
+	value = readl(ioaddr + GMAC_DEBUG);
 
 	if (value & GMAC_DEBUG_TFCSTS_MASK) {
 		uint32_t tfcsts = (value & GMAC_DEBUG_TFCSTS_MASK)
@@ -941,14 +941,14 @@ static void dwmac4_debug(void *ioaddr , struct stmmac_extra_stats *x,
 
 static void dwmac4_set_mac_loopback(void *ioaddr , bool enable)
 {
-	uint32_t value = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+	uint32_t value = readl(ioaddr + GMAC_CONFIG);
 
 	if (enable)
 		value |= GMAC_CONFIG_LM;
 	else
 		value &= ~GMAC_CONFIG_LM;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_CONFIG);
+	writel(value, ioaddr + GMAC_CONFIG);
 }
 
 static void dwmac4_update_vlan_hash(struct mac_device_info *hw, uint32_t hash,
@@ -957,9 +957,9 @@ static void dwmac4_update_vlan_hash(struct mac_device_info *hw, uint32_t hash,
 	void  *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	rte_write32(hash, (uint8_t *)ioaddr + GMAC_VLAN_HASH_TABLE);
+	writel(hash, ioaddr + GMAC_VLAN_HASH_TABLE);
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_TAG);
+	value = readl(ioaddr + GMAC_VLAN_TAG);
 
 	if (hash) {
 		value |= GMAC_VLAN_VTHM | GMAC_VLAN_ETV;
@@ -969,7 +969,7 @@ static void dwmac4_update_vlan_hash(struct mac_device_info *hw, uint32_t hash,
 			value |= GMAC_VLAN_DOVLTC;
 		}
 
-		rte_write32(value, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		writel(value, ioaddr + GMAC_VLAN_TAG);
 	} else if (perfect_match) {
 		uint32_t value = GMAC_VLAN_ETV;
 
@@ -979,25 +979,25 @@ static void dwmac4_update_vlan_hash(struct mac_device_info *hw, uint32_t hash,
 			value |= GMAC_VLAN_DOVLTC;
 		}
 
-		rte_write32(value | perfect_match, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		writel(value | perfect_match, ioaddr + GMAC_VLAN_TAG);
 	} else {
 		value &= ~(GMAC_VLAN_VTHM | GMAC_VLAN_ETV);
 		value &= ~(GMAC_VLAN_EDVLP | GMAC_VLAN_ESVL);
 		value &= ~GMAC_VLAN_DOVLTC;
 		value &= ~GMAC_VLAN_VID;
 
-		rte_write32(value, (uint8_t *)ioaddr + GMAC_VLAN_TAG);
+		writel(value, ioaddr + GMAC_VLAN_TAG);
 	}
 }
 
 static void dwmac4_sarc_configure(void *ioaddr , int val)
 {
-	uint32_t value = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+	uint32_t value = readl(ioaddr + GMAC_CONFIG);
 
 	value &= ~GMAC_CONFIG_SARC;
 	value |= val << GMAC_CONFIG_SARC_SHIFT;
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_CONFIG);
+	writel(value, ioaddr + GMAC_CONFIG);
 }
 
 static void dwmac4_enable_vlan(struct mac_device_info *hw, uint32_t type)
@@ -1005,12 +1005,12 @@ static void dwmac4_enable_vlan(struct mac_device_info *hw, uint32_t type)
 	void  *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_VLAN_INCL);
+	value = readl(ioaddr + GMAC_VLAN_INCL);
 	value |= GMAC_VLAN_VLTI;
 	value |= GMAC_VLAN_CSVL; /* Only use SVLAN */
 	value &= ~GMAC_VLAN_VLC;
 	value |= (type << GMAC_VLAN_VLC_SHIFT) & GMAC_VLAN_VLC;
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_VLAN_INCL);
+	writel(value, ioaddr + GMAC_VLAN_INCL);
 }
 
 static void dwmac4_set_arp_offload(struct mac_device_info *hw, bool en,
@@ -1019,14 +1019,14 @@ static void dwmac4_set_arp_offload(struct mac_device_info *hw, bool en,
 	void  *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	rte_write32(addr, (uint8_t *)ioaddr + GMAC_ARP_ADDR);
+	writel(addr, ioaddr + GMAC_ARP_ADDR);
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_CONFIG);
+	value = readl(ioaddr + GMAC_CONFIG);
 	if (en)
 		value |= GMAC_CONFIG_ARPEN;
 	else
 		value &= ~GMAC_CONFIG_ARPEN;
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_CONFIG);
+	writel(value, ioaddr + GMAC_CONFIG);
 }
 
 static int dwmac4_config_l3_filter(struct mac_device_info *hw, uint32_t filter_no,
@@ -1036,11 +1036,11 @@ static int dwmac4_config_l3_filter(struct mac_device_info *hw, uint32_t filter_n
 	void  *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_PACKET_FILTER);
+	value = readl(ioaddr + GMAC_PACKET_FILTER);
 	value |= GMAC_PACKET_FILTER_IPFE;
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_PACKET_FILTER);
+	writel(value, ioaddr + GMAC_PACKET_FILTER);
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_L3L4_CTRL(filter_no));
+	value = readl(ioaddr + GMAC_L3L4_CTRL(filter_no));
 
 	/* For IPv6 not both SA/DA filters can be active */
 	if (ipv6) {
@@ -1069,16 +1069,16 @@ static int dwmac4_config_l3_filter(struct mac_device_info *hw, uint32_t filter_n
 		}
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_L3L4_CTRL(filter_no));
+	writel(value, ioaddr + GMAC_L3L4_CTRL(filter_no));
 
 	if (sa) {
-		rte_write32(match, (uint8_t *)ioaddr + GMAC_L3_ADDR0(filter_no));
+		writel(match, ioaddr + GMAC_L3_ADDR0(filter_no));
 	} else {
-		rte_write32(match, (uint8_t *)ioaddr + GMAC_L3_ADDR1(filter_no));
+		writel(match, ioaddr + GMAC_L3_ADDR1(filter_no));
 	}
 
 	if (!en)
-		rte_write32(0, (uint8_t *)ioaddr + GMAC_L3L4_CTRL(filter_no));
+		writel(0, ioaddr + GMAC_L3L4_CTRL(filter_no));
 
 	return 0;
 }
@@ -1090,11 +1090,11 @@ static int dwmac4_config_l4_filter(struct mac_device_info *hw, uint32_t filter_n
 	void *ioaddr = hw->pcsr;
 	uint32_t value;
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_PACKET_FILTER);
+	value = readl(ioaddr + GMAC_PACKET_FILTER);
 	value |= GMAC_PACKET_FILTER_IPFE;
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_PACKET_FILTER);
+	writel(value, ioaddr + GMAC_PACKET_FILTER);
 
-	value = rte_read32((uint8_t *)ioaddr + GMAC_L3L4_CTRL(filter_no));
+	value = readl(ioaddr + GMAC_L3L4_CTRL(filter_no));
 	if (udp) {
 		value |= GMAC_L4PEN0;
 	} else {
@@ -1113,7 +1113,7 @@ static int dwmac4_config_l4_filter(struct mac_device_info *hw, uint32_t filter_n
 			value |= GMAC_L4DPIM0;
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_L3L4_CTRL(filter_no));
+	writel(value, ioaddr + GMAC_L3L4_CTRL(filter_no));
 
 	if (sa) {
 		value = match & GMAC_L4SP0;
@@ -1121,10 +1121,10 @@ static int dwmac4_config_l4_filter(struct mac_device_info *hw, uint32_t filter_n
 		value = (match << GMAC_L4DP0_SHIFT) & GMAC_L4DP0;
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_L4_ADDR(filter_no));
+	writel(value, ioaddr + GMAC_L4_ADDR(filter_no));
 
 	if (!en)
-		rte_write32(0, (uint8_t *)ioaddr + GMAC_L3L4_CTRL(filter_no));
+		writel(0, ioaddr + GMAC_L3L4_CTRL(filter_no));
 
 	return 0;
 }
@@ -1209,7 +1209,7 @@ static uint32_t dwmac4_get_num_vlan(void *ioaddr )
 {
 	uint32_t val, num_vlan;
 
-	val = rte_read32((uint8_t *)ioaddr + GMAC_HW_FEATURE3);
+	val = readl(ioaddr + GMAC_HW_FEATURE3);
 	switch (val & GMAC_HW_FEAT_NRVF) {
 	case 0:
 		num_vlan = 1;
@@ -1242,9 +1242,6 @@ int dwmac4_setup(struct stmmac_private *priv)
 
 	STMMAC_PMD_INFO("\tDWMAC4/5\n");
 
-	STMMAC_PMD_ERR("\tDWMAC4/5\n");
-
-	//priv->dev->priv_flags |= IFF_UNICAST_FLT;
 	mac->pcsr = priv->ioaddr_v;
 	//mac->multicast_filter_bins = priv->plat->multicast_filter_bins;
 	//mac->unicast_filter_entries = priv->plat->unicast_filter_entries;
@@ -1253,11 +1250,11 @@ int dwmac4_setup(struct stmmac_private *priv)
 	//if (mac->multicast_filter_bins)
 	//	mac->mcast_bits_log2 = ilog2(mac->multicast_filter_bins);
 
-	//mac->link.duplex = GMAC_CONFIG_DM;
-	//mac->link.speed10 = GMAC_CONFIG_PS;
-	//mac->link.speed100 = GMAC_CONFIG_FES | GMAC_CONFIG_PS;
-	//mac->link.speed1000 = 0;
-	//mac->link.speed_mask = GMAC_CONFIG_FES | GMAC_CONFIG_PS;
+	mac->link.duplex = GMAC_CONFIG_DM;
+	mac->link.speed10 = GMAC_CONFIG_PS;
+	mac->link.speed100 = GMAC_CONFIG_FES | GMAC_CONFIG_PS;
+	mac->link.speed1000 = 0;
+	mac->link.speed_mask = GMAC_CONFIG_FES | GMAC_CONFIG_PS;
 	//mac->mii.addr = GMAC_MDIO_ADDR;
 	//mac->mii.data = GMAC_MDIO_DATA;
 	//mac->mii.addr_shift = 21;
@@ -1266,7 +1263,7 @@ int dwmac4_setup(struct stmmac_private *priv)
 	//mac->mii.reg_mask = GENMASK(20, 16);
 	//mac->mii.clk_csr_shift = 8;
 	//mac->mii.clk_csr_mask = GENMASK(11, 8);
-	mac->num_vlan = dwmac4_get_num_vlan(priv->ioaddr_v);
+	//mac->num_vlan = dwmac4_get_num_vlan(priv->ioaddr_v);
 
 	return 0;
 }

@@ -5,6 +5,54 @@
 #ifndef __STMMAC_PLATFORM_DATA
 #define __STMMAC_PLATFORM_DATA
 
+#define __iomem
+typedef uint8_t		u8;
+typedef int8_t		s8;
+typedef uint16_t	u16;
+typedef uint32_t	u32;
+typedef int32_t		s32;
+typedef uint64_t	u64;
+#ifndef LINUX_MACROS
+#ifndef BITS_PER_LONG
+#define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
+#endif
+#ifndef BITS_PER_LONG_LONG
+#define BITS_PER_LONG_LONG  (__SIZEOF_LONG_LONG__ * 8)
+#endif
+#ifndef BIT
+#define BIT(a) (1UL << (a))
+#endif /* BIT */
+#ifndef BIT_ULL
+#define BIT_ULL(a) (1ULL << (a))
+#endif /* BIT_ULL */
+#ifndef GENMASK
+#define GENMASK(h, l)	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
+#endif /* GENMASK */
+#ifndef GENMASK_ULL
+#define GENMASK_ULL(h, l) \
+	(((~0ULL) << (l)) & (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
+#endif /* GENMASK_ULL */
+#endif /* LINUX_MACROS */
+#define cpu_to_be16(o) rte_cpu_to_be_16(o)
+#define cpu_to_be32(o) rte_cpu_to_be_32(o)
+#define cpu_to_be64(o) rte_cpu_to_be_64(o)
+#define cpu_to_le32(o) rte_cpu_to_le_32(o)
+#define be16_to_cpu(o) rte_be_to_cpu_16(o)
+#define be32_to_cpu(o) rte_be_to_cpu_32(o)
+#define be64_to_cpu(o) rte_be_to_cpu_64(o)
+#define le32_to_cpu(o) rte_le_to_cpu_32(o)
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define DELAY(x) rte_delay_us(x)
+#define udelay(x) DELAY(x)
+#define msleep(x) DELAY(1000 * (x))
+#define usleep_range(min, max) msleep(DIV_ROUND_UP(min, 1000))
+#define lower_32_bits(x) ((uint32_t)(x))
+#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
+#define writel(v, p) rte_write32(v, (uint8_t *)p)//({*(volatile unsigned int *)(p) = (v); })
+#define readl(p) rte_read32((uint8_t *)p)
+#define min(a, b) RTE_MIN(a, b)
+#define max(a, b) RTE_MAX(a, b)
+
 #define MTL_MAX_RX_QUEUES	8
 #define MTL_MAX_TX_QUEUES	8
 #define STMMAC_CH_MAX		8
@@ -135,7 +183,7 @@ struct stmmac_txq_cfg {
 
 struct plat_stmmacenet_data {
 	int bus_id;
-	struct stmmac_dma_cfg *dma_cfg;
+	struct stmmac_dma_cfg dma_cfg;
 	struct stmmac_est *est;
 	int clk_csr;
 	int has_gmac;
@@ -164,8 +212,7 @@ struct plat_stmmacenet_data {
 	void (*get_eth_addr)(void *priv, unsigned char *addr);
 	struct mac_device_info *(*setup)(void *priv);
 	uint32_t ptp_max_adj;
-	struct stmmac_axi *axi;
-	bool has_sun8i;
+	struct stmmac_axi axi;
 	bool tso_en;
 	int rss_en;
 	int mac_port_sel_speed;

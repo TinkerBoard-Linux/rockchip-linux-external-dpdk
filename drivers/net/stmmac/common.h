@@ -14,9 +14,6 @@
 #include "stmmac.h"
 #include "stmmac_uio.h"
 
-#define lower_32_bits(x) ((uint32_t)(x))
-#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
-
 #define SPEED_10		10
 #define SPEED_100		100
 #define SPEED_1000		1000
@@ -435,6 +432,35 @@ struct mac_device_info;
 extern const struct stmmac_hwtimestamp stmmac_ptp;
 extern const struct stmmac_mode_ops dwmac4_ring_mode_ops;
 
+/* Interface Mode definitions */
+typedef enum {
+	PHY_INTERFACE_MODE_NA,
+	PHY_INTERFACE_MODE_INTERNAL,
+	PHY_INTERFACE_MODE_MII,
+	PHY_INTERFACE_MODE_GMII,
+	PHY_INTERFACE_MODE_SGMII,
+	PHY_INTERFACE_MODE_TBI,
+	PHY_INTERFACE_MODE_REVMII,
+	PHY_INTERFACE_MODE_RMII,
+	PHY_INTERFACE_MODE_RGMII,
+	PHY_INTERFACE_MODE_RGMII_ID,
+	PHY_INTERFACE_MODE_RGMII_RXID,
+	PHY_INTERFACE_MODE_RGMII_TXID,
+	PHY_INTERFACE_MODE_RTBI,
+	PHY_INTERFACE_MODE_SMII,
+	PHY_INTERFACE_MODE_XGMII,
+	PHY_INTERFACE_MODE_MOCA,
+	PHY_INTERFACE_MODE_QSGMII,
+	PHY_INTERFACE_MODE_TRGMII,
+	PHY_INTERFACE_MODE_1000BASEX,
+	PHY_INTERFACE_MODE_2500BASEX,
+	PHY_INTERFACE_MODE_RXAUI,
+	PHY_INTERFACE_MODE_XAUI,
+	/* 10GBASE-KR, XFI, SFI - single lane 10G Serdes */
+	PHY_INTERFACE_MODE_10GKR,
+	PHY_INTERFACE_MODE_MAX,
+} phy_interface_t;
+
 struct mac_link {
 	uint32_t speed_mask;
 	uint32_t speed10;
@@ -502,9 +528,6 @@ struct stmmac_rx_routing {
 
 #define STMMAC_MAX_Q		1
 
-#define writel(v, p) ({*(volatile unsigned int *)(p) = (v); })
-#define readl(p) rte_read32(p)
-
 struct stmmac_tx_info {
 	dma_addr_t buf;
 	bool map_as_page;
@@ -567,7 +590,7 @@ struct stmmac_rx_queue {
 	dma_addr_t dma_rx_phy;
 	uint32_t rx_tail_addr;
 	unsigned int state_saved;
-	unsigned short	 dma_rx_size;
+	unsigned short dma_rx_size;
 	struct {
 		struct sk_buff *skb;
 		unsigned int len;
@@ -579,21 +602,28 @@ struct stmmac_rx_queue {
 };
 
 struct stmmac_private {
-	struct rte_eth_dev	*dev;
+	struct rte_eth_dev *dev;
 	struct rte_eth_stats stats;
 	struct mac_device_info *hw;
 	struct plat_stmmacenet_data *plat;
+	struct dma_features dma_cap;
 	struct uio_job stmmac_uio_job;
 	unsigned int mode;
 	unsigned int chain_mode;
 	int extend_desc;
-	void  *mmcaddr;
-	void  *ptpaddr;
+	void *mmcaddr;
+	void *ptpaddr;
 	unsigned int dma_buf_sz;
 	int use_riwt;
 	uint32_t rx_riwt;
 	int hwts_rx_en;
 	unsigned int synopsys_id;
+	int hw_cap_support;
+	struct stmmac_counters mmc;
+	int speed;
+	unsigned int flow_ctrl;
+	unsigned int pause;
+	int (*hwif_quirks)(struct stmmac_private *priv);
 	int			full_duplex;
 	int			flag_pause;
 	int			flag_csum;

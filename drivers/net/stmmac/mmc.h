@@ -1,6 +1,12 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2022 Fuzhou Rockchip Electronics Co., Ltd
- */
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*******************************************************************************
+  MMC Header file
+
+  Copyright (C) 2011  STMicroelectronics Ltd
+
+
+  Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
+*******************************************************************************/
 
 #ifndef __MMC_H__
 #define __MMC_H__

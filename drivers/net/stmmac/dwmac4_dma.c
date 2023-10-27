@@ -5,9 +5,9 @@
 #include "dwmac4.h"
 #include "dwmac4_dma.h"
 
-static void dwmac4_dma_axi(void  *ioaddr, struct stmmac_axi *axi)
+static void dwmac4_dma_axi(void __iomem *ioaddr, struct stmmac_axi *axi)
 {
-	uint32_t value = rte_read32((uint8_t *)ioaddr + DMA_SYS_BUS_MODE);
+	u32 value = readl(ioaddr + DMA_SYS_BUS_MODE);
 	int i;
 
 	STMMAC_PMD_INFO("dwmac4: Master AXI performs %s burst length\n",
@@ -56,86 +56,86 @@ static void dwmac4_dma_axi(void  *ioaddr, struct stmmac_axi *axi)
 		}
 	}
 
-	rte_write32(value, (uint8_t *)ioaddr + DMA_SYS_BUS_MODE);
+	writel(value, ioaddr + DMA_SYS_BUS_MODE);
 }
 
-static void dwmac4_dma_init_rx_chan(void  *ioaddr,
+static void dwmac4_dma_init_rx_chan(void __iomem *ioaddr,
 				    struct stmmac_dma_cfg *dma_cfg,
-				    dma_addr_t dma_rx_phy, uint32_t chan)
+				    u32 dma_rx_phy, u32 chan)
 {
-	uint32_t value;
-	uint32_t rxpbl = dma_cfg->rxpbl ?: dma_cfg->pbl;
+	u32 value;
+	u32 rxpbl = dma_cfg->rxpbl ?: dma_cfg->pbl;
 
-	value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_CONTROL(chan));
+	value = readl(ioaddr + DMA_CHAN_RX_CONTROL(chan));
 	value = value | (rxpbl << DMA_BUS_MODE_RPBL_SHIFT);
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_RX_CONTROL(chan));
+	writel(value, ioaddr + DMA_CHAN_RX_CONTROL(chan));
 
 	//if (IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT) && likely(dma_cfg->eame))
-		rte_write32(upper_32_bits(dma_rx_phy),
+		writel(upper_32_bits(dma_rx_phy),
 		       (uint8_t *)ioaddr + DMA_CHAN_RX_BASE_ADDR_HI(chan));
 
-	rte_write32(lower_32_bits(dma_rx_phy), (uint8_t *)ioaddr + DMA_CHAN_RX_BASE_ADDR(chan));
+	writel(lower_32_bits(dma_rx_phy), ioaddr + DMA_CHAN_RX_BASE_ADDR(chan));
 }
 
-static void dwmac4_dma_init_tx_chan(void  *ioaddr,
+static void dwmac4_dma_init_tx_chan(void __iomem *ioaddr,
 				    struct stmmac_dma_cfg *dma_cfg,
-				    dma_addr_t dma_tx_phy, uint32_t chan)
+				    u32 dma_tx_phy, u32 chan)
 {
-	uint32_t value;
-	uint32_t txpbl = dma_cfg->txpbl ?: dma_cfg->pbl;
+	u32 value;
+	u32 txpbl = dma_cfg->txpbl ?: dma_cfg->pbl;
 
-	value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
+	value = readl(ioaddr + DMA_CHAN_TX_CONTROL(chan));
 	value = value | (txpbl << DMA_BUS_MODE_PBL_SHIFT);
 
 	/* Enable OSP to get best performance */
 	value |= DMA_CONTROL_OSP;
 
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
+	writel(value, ioaddr + DMA_CHAN_TX_CONTROL(chan));
 
 	//if (IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT) && likely(dma_cfg->eame))
-		rte_write32(upper_32_bits(dma_tx_phy),
+		writel(upper_32_bits(dma_tx_phy),
 		       (uint8_t *)ioaddr + DMA_CHAN_TX_BASE_ADDR_HI(chan));
 
-	rte_write32(lower_32_bits(dma_tx_phy), (uint8_t *)ioaddr + DMA_CHAN_TX_BASE_ADDR(chan));
+	writel(lower_32_bits(dma_tx_phy), ioaddr + DMA_CHAN_TX_BASE_ADDR(chan));
 }
 
-static void dwmac4_dma_init_channel(void  *ioaddr,
-				    struct stmmac_dma_cfg *dma_cfg, uint32_t chan)
+static void dwmac4_dma_init_channel(void __iomem *ioaddr,
+				    struct stmmac_dma_cfg *dma_cfg, u32 chan)
 {
-	uint32_t value;
+	u32 value;
 
 	/* common channel control register config */
-	value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_CONTROL(chan));
+	value = readl(ioaddr + DMA_CHAN_CONTROL(chan));
 	if (dma_cfg->pblx8)
 		value = value | DMA_BUS_MODE_PBL;
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_CONTROL(chan));
+	writel(value, ioaddr + DMA_CHAN_CONTROL(chan));
 
 	/* Mask interrupts by writing to CSR7 */
-	rte_write32(DMA_CHAN_INTR_DEFAULT_MASK,
-	       (uint8_t *)ioaddr + DMA_CHAN_INTR_ENA(chan));
+	writel(DMA_CHAN_INTR_DEFAULT_MASK,
+	       ioaddr + DMA_CHAN_INTR_ENA(chan));
 }
 
-static void dwmac410_dma_init_channel(void  *ioaddr,
-				      struct stmmac_dma_cfg *dma_cfg, uint32_t chan)
+static void dwmac410_dma_init_channel(void __iomem *ioaddr,
+				      struct stmmac_dma_cfg *dma_cfg, u32 chan)
 {
-	uint32_t value;
+	u32 value;
 
 	/* common channel control register config */
-	value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_CONTROL(chan));
+	value = readl(ioaddr + DMA_CHAN_CONTROL(chan));
 	if (dma_cfg->pblx8)
 		value = value | DMA_BUS_MODE_PBL;
 
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_CONTROL(chan));
+	writel(value, ioaddr + DMA_CHAN_CONTROL(chan));
 
 	/* Mask interrupts by writing to CSR7 */
-	rte_write32(DMA_CHAN_INTR_DEFAULT_MASK_4_10,
-	       (uint8_t *)ioaddr + DMA_CHAN_INTR_ENA(chan));
+	writel(DMA_CHAN_INTR_DEFAULT_MASK_4_10,
+	       ioaddr + DMA_CHAN_INTR_ENA(chan));
 }
 
-static void dwmac4_dma_init(void  *ioaddr,
-			    struct stmmac_dma_cfg *dma_cfg)
+static void dwmac4_dma_init(void __iomem *ioaddr,
+			    struct stmmac_dma_cfg *dma_cfg, int atds)
 {
-	uint32_t value = rte_read32((uint8_t *)ioaddr + DMA_SYS_BUS_MODE);
+	u32 value = readl(ioaddr + DMA_SYS_BUS_MODE);
 
 	/* Set the Fixed burst mode */
 	if (dma_cfg->fixed_burst)
@@ -151,71 +151,71 @@ static void dwmac4_dma_init(void  *ioaddr,
 	if (dma_cfg->eame)
 		value |= DMA_SYS_BUS_EAME;
 
-	rte_write32(value, (uint8_t *)ioaddr + DMA_SYS_BUS_MODE);
+	writel(value, ioaddr + DMA_SYS_BUS_MODE);
 }
 
-static void _dwmac4_dump_dma_regs(void  *ioaddr, uint32_t channel,
-				  uint32_t *reg_space)
+static void _dwmac4_dump_dma_regs(void __iomem *ioaddr, u32 channel,
+				  u32 *reg_space)
 {
 	reg_space[DMA_CHAN_CONTROL(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_CONTROL(channel));
+		readl(ioaddr + DMA_CHAN_CONTROL(channel));
 	reg_space[DMA_CHAN_TX_CONTROL(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(channel));
+		readl(ioaddr + DMA_CHAN_TX_CONTROL(channel));
 	reg_space[DMA_CHAN_RX_CONTROL(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_CONTROL(channel));
+		readl(ioaddr + DMA_CHAN_RX_CONTROL(channel));
 	reg_space[DMA_CHAN_TX_BASE_ADDR(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_BASE_ADDR(channel));
+		readl(ioaddr + DMA_CHAN_TX_BASE_ADDR(channel));
 	reg_space[DMA_CHAN_RX_BASE_ADDR(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_BASE_ADDR(channel));
+		readl(ioaddr + DMA_CHAN_RX_BASE_ADDR(channel));
 	reg_space[DMA_CHAN_TX_END_ADDR(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_END_ADDR(channel));
+		readl(ioaddr + DMA_CHAN_TX_END_ADDR(channel));
 	reg_space[DMA_CHAN_RX_END_ADDR(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_END_ADDR(channel));
+		readl(ioaddr + DMA_CHAN_RX_END_ADDR(channel));
 	reg_space[DMA_CHAN_TX_RING_LEN(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_RING_LEN(channel));
+		readl(ioaddr + DMA_CHAN_TX_RING_LEN(channel));
 	reg_space[DMA_CHAN_RX_RING_LEN(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_RING_LEN(channel));
+		readl(ioaddr + DMA_CHAN_RX_RING_LEN(channel));
 	reg_space[DMA_CHAN_INTR_ENA(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_INTR_ENA(channel));
+		readl(ioaddr + DMA_CHAN_INTR_ENA(channel));
 	reg_space[DMA_CHAN_RX_WATCHDOG(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_WATCHDOG(channel));
+		readl(ioaddr + DMA_CHAN_RX_WATCHDOG(channel));
 	reg_space[DMA_CHAN_SLOT_CTRL_STATUS(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_SLOT_CTRL_STATUS(channel));
+		readl(ioaddr + DMA_CHAN_SLOT_CTRL_STATUS(channel));
 	reg_space[DMA_CHAN_CUR_TX_DESC(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_CUR_TX_DESC(channel));
+		readl(ioaddr + DMA_CHAN_CUR_TX_DESC(channel));
 	reg_space[DMA_CHAN_CUR_RX_DESC(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_CUR_RX_DESC(channel));
+		readl(ioaddr + DMA_CHAN_CUR_RX_DESC(channel));
 	reg_space[DMA_CHAN_CUR_TX_BUF_ADDR(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_CUR_TX_BUF_ADDR(channel));
+		readl(ioaddr + DMA_CHAN_CUR_TX_BUF_ADDR(channel));
 	reg_space[DMA_CHAN_CUR_RX_BUF_ADDR(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_CUR_RX_BUF_ADDR(channel));
+		readl(ioaddr + DMA_CHAN_CUR_RX_BUF_ADDR(channel));
 	reg_space[DMA_CHAN_STATUS(channel) / 4] =
-		rte_read32((uint8_t *)ioaddr + DMA_CHAN_STATUS(channel));
+		readl(ioaddr + DMA_CHAN_STATUS(channel));
 }
 
-static void dwmac4_dump_dma_regs(void  *ioaddr, uint32_t *reg_space)
+static void dwmac4_dump_dma_regs(void __iomem *ioaddr, u32 *reg_space)
 {
 	int i;
 
 	for (i = 0; i < DMA_CHANNEL_NB_MAX; i++)
-		_dwmac4_dump_dma_regs((uint8_t *)ioaddr, i, reg_space);
+		_dwmac4_dump_dma_regs(ioaddr, i, reg_space);
 }
 
-static void dwmac4_rx_watchdog(void  *ioaddr, uint32_t riwt, uint32_t number_chan)
+static void dwmac4_rx_watchdog(void __iomem *ioaddr, u32 riwt, u32 number_chan)
 {
-	uint32_t chan;
+	u32 chan;
 
 	for (chan = 0; chan < number_chan; chan++)
-		rte_write32(riwt, (uint8_t *)ioaddr + DMA_CHAN_RX_WATCHDOG(chan));
+		writel(riwt, ioaddr + DMA_CHAN_RX_WATCHDOG(chan));
 }
 
-static void dwmac4_dma_rx_chan_op_mode(void  *ioaddr, int mode,
-				       uint32_t channel, int fifosz, uint8_t qmode)
+static void dwmac4_dma_rx_chan_op_mode(void __iomem *ioaddr, int mode,
+				       u32 channel, int fifosz, u8 qmode)
 {
 	unsigned int rqs = fifosz / 256 - 1;
-	uint32_t mtl_rx_op;
+	u32 mtl_rx_op;
 
-	mtl_rx_op = rte_read32((uint8_t *)ioaddr + MTL_CHAN_RX_OP_MODE(channel));
+	mtl_rx_op = readl(ioaddr + MTL_CHAN_RX_OP_MODE(channel));
 
 	if (mode == SF_DMA_MODE) {
 		STMMAC_PMD_INFO("GMAC: enable RX store and forward mode\n");
@@ -260,9 +260,19 @@ static void dwmac4_dma_rx_chan_op_mode(void  *ioaddr, int mode,
 			rfa = 0x01; /* Full-1.5K */
 			break;
 
+		case 8192:
+			rfd = 0x06; /* Full-4K */
+			rfa = 0x0a; /* Full-6K */
+			break;
+
+		case 16384:
+			rfd = 0x06; /* Full-4K */
+			rfa = 0x12; /* Full-10K */
+			break;
+
 		default:
-			rfd = 0x07; /* Full-4.5K */
-			rfa = 0x04; /* Full-3K */
+			rfd = 0x06; /* Full-4K */
+			rfa = 0x1e; /* Full-16K */
 			break;
 		}
 
@@ -273,13 +283,13 @@ static void dwmac4_dma_rx_chan_op_mode(void  *ioaddr, int mode,
 		mtl_rx_op |= rfa << MTL_OP_MODE_RFA_SHIFT;
 	}
 
-	rte_write32(mtl_rx_op, (uint8_t *)ioaddr + MTL_CHAN_RX_OP_MODE(channel));
+	writel(mtl_rx_op, ioaddr + MTL_CHAN_RX_OP_MODE(channel));
 }
 
-static void dwmac4_dma_tx_chan_op_mode(void  *ioaddr, int mode,
-				       uint32_t channel, int fifosz, uint8_t qmode)
+static void dwmac4_dma_tx_chan_op_mode(void __iomem *ioaddr, int mode,
+				       u32 channel, int fifosz, u8 qmode)
 {
-	uint32_t mtl_tx_op = rte_read32((uint8_t *)ioaddr + MTL_CHAN_TX_OP_MODE(channel));
+	u32 mtl_tx_op = readl(ioaddr + MTL_CHAN_TX_OP_MODE(channel));
 	unsigned int tqs = fifosz / 256 - 1;
 
 	if (mode == SF_DMA_MODE) {
@@ -325,19 +335,19 @@ static void dwmac4_dma_tx_chan_op_mode(void  *ioaddr, int mode,
 	mtl_tx_op &= ~MTL_OP_MODE_TQS_MASK;
 	mtl_tx_op |= tqs << MTL_OP_MODE_TQS_SHIFT;
 
-	rte_write32(mtl_tx_op, (uint8_t *)ioaddr +  MTL_CHAN_TX_OP_MODE(channel));
+	writel(mtl_tx_op, ioaddr +  MTL_CHAN_TX_OP_MODE(channel));
 }
 
-static void dwmac4_get_hw_feature(void  *ioaddr,
+static void dwmac4_get_hw_feature(void __iomem *ioaddr,
 				  struct dma_features *dma_cap)
 {
-	uint32_t hw_cap = rte_read32((uint8_t *)ioaddr + GMAC_HW_FEATURE0);
+	u32 hw_cap = readl(ioaddr + GMAC_HW_FEATURE0);
 
 	/*  MAC HW feature0 */
 	dma_cap->mbps_10_100 = (hw_cap & GMAC_HW_FEAT_MIISEL);
 	dma_cap->mbps_1000 = (hw_cap & GMAC_HW_FEAT_GMIISEL) >> 1;
 	dma_cap->half_duplex = (hw_cap & GMAC_HW_FEAT_HDSEL) >> 2;
-	dma_cap->vlhash = (hw_cap & GMAC_HW_FEAT_VLHASH) >> 4;
+	dma_cap->hash_filter = (hw_cap & GMAC_HW_FEAT_VLHASH) >> 4;
 	dma_cap->multi_addr = (hw_cap & GMAC_HW_FEAT_ADDMAC) >> 18;
 	dma_cap->pcs = (hw_cap & GMAC_HW_FEAT_PCSSEL) >> 3;
 	dma_cap->sma_mdio = (hw_cap & GMAC_HW_FEAT_SMASEL) >> 5;
@@ -356,9 +366,7 @@ static void dwmac4_get_hw_feature(void  *ioaddr,
 	dma_cap->arpoffsel = (hw_cap & GMAC_HW_FEAT_ARPOFFSEL) >> 9;
 
 	/* MAC HW feature1 */
-	hw_cap = rte_read32((uint8_t *)ioaddr + GMAC_HW_FEATURE1);
-	dma_cap->l3l4fnum = (hw_cap & GMAC_HW_FEAT_L3L4FNUM) >> 27;
-	dma_cap->hash_tb_sz = (hw_cap & GMAC_HW_HASH_TB_SZ) >> 24;
+	hw_cap = readl(ioaddr + GMAC_HW_FEATURE1);
 	dma_cap->av = (hw_cap & GMAC_HW_FEAT_AVSEL) >> 20;
 	dma_cap->tsoen = (hw_cap & GMAC_HW_TSOEN) >> 18;
 	dma_cap->sphen = (hw_cap & GMAC_HW_FEAT_SPHEN) >> 17;
@@ -385,7 +393,7 @@ static void dwmac4_get_hw_feature(void  *ioaddr,
 	dma_cap->tx_fifo_size = 128 << ((hw_cap & GMAC_HW_TXFIFOSIZE) >> 6);
 	dma_cap->rx_fifo_size = 128 << ((hw_cap & GMAC_HW_RXFIFOSIZE) >> 0);
 	/* MAC HW feature2 */
-	hw_cap = rte_read32((uint8_t *)ioaddr + GMAC_HW_FEATURE2);
+	hw_cap = readl(ioaddr + GMAC_HW_FEATURE2);
 	/* TX and RX number of channels */
 	dma_cap->number_rx_channel =
 		((hw_cap & GMAC_HW_FEAT_RXCHCNT) >> 12) + 1;
@@ -403,7 +411,7 @@ static void dwmac4_get_hw_feature(void  *ioaddr,
 	dma_cap->time_stamp = 0;
 
 	/* MAC HW feature3 */
-	hw_cap = rte_read32((uint8_t *)ioaddr + GMAC_HW_FEATURE3);
+	hw_cap = readl(ioaddr + GMAC_HW_FEATURE3);
 
 	/* 5.10 Features */
 	dma_cap->asp = (hw_cap & GMAC_HW_FEAT_ASP) >> 28;
@@ -419,26 +427,26 @@ static void dwmac4_get_hw_feature(void  *ioaddr,
 }
 
 /* Enable/disable TSO feature and set MSS */
-static void dwmac4_enable_tso(void  *ioaddr, bool en, uint32_t chan)
+static void dwmac4_enable_tso(void __iomem *ioaddr, bool en, u32 chan)
 {
-	uint32_t value;
+	u32 value;
 
 	if (en) {
 		/* enable TSO */
-		value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
-		rte_write32(value | DMA_CONTROL_TSE,
-		       (uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
+		value = readl(ioaddr + DMA_CHAN_TX_CONTROL(chan));
+		writel(value | DMA_CONTROL_TSE,
+		       ioaddr + DMA_CHAN_TX_CONTROL(chan));
 	} else {
 		/* enable TSO */
-		value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
-		rte_write32(value & ~DMA_CONTROL_TSE,
-		       (uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
+		value = readl(ioaddr + DMA_CHAN_TX_CONTROL(chan));
+		writel(value & ~DMA_CONTROL_TSE,
+		       ioaddr + DMA_CHAN_TX_CONTROL(chan));
 	}
 }
 
-static void dwmac4_qmode(void  *ioaddr, uint32_t channel, uint8_t qmode)
+static void dwmac4_qmode(void __iomem *ioaddr, u32 channel, u8 qmode)
 {
-	uint32_t mtl_tx_op = rte_read32((uint8_t *)ioaddr + MTL_CHAN_TX_OP_MODE(channel));
+	u32 mtl_tx_op = readl(ioaddr + MTL_CHAN_TX_OP_MODE(channel));
 
 	mtl_tx_op &= ~MTL_OP_MODE_TXQEN_MASK;
 	if (qmode != MTL_QUEUE_AVB)
@@ -446,52 +454,17 @@ static void dwmac4_qmode(void  *ioaddr, uint32_t channel, uint8_t qmode)
 	else
 		mtl_tx_op |= MTL_OP_MODE_TXQEN_AV;
 
-	rte_write32(mtl_tx_op, (uint8_t *)ioaddr +  MTL_CHAN_TX_OP_MODE(channel));
+	writel(mtl_tx_op, ioaddr +  MTL_CHAN_TX_OP_MODE(channel));
 }
 
-static void dwmac4_set_bfsize(void  *ioaddr, int bfsize, uint32_t chan)
+static void dwmac4_set_bfsize(void __iomem *ioaddr, int bfsize, u32 chan)
 {
-	uint32_t value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_RX_CONTROL(chan));
+	u32 value = readl(ioaddr + DMA_CHAN_RX_CONTROL(chan));
 
 	value &= ~DMA_RBSZ_MASK;
 	value |= (bfsize << DMA_RBSZ_SHIFT) & DMA_RBSZ_MASK;
 
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_RX_CONTROL(chan));
-}
-
-static void dwmac4_enable_sph(void  *ioaddr, bool en, uint32_t chan)
-{
-	uint32_t value = rte_read32((uint8_t *)ioaddr + GMAC_EXT_CONFIG);
-
-	value &= ~GMAC_CONFIG_HDSMS;
-	value |= GMAC_CONFIG_HDSMS_256; /* Segment max 256 bytes */
-	rte_write32(value, (uint8_t *)ioaddr + GMAC_EXT_CONFIG);
-
-	value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_CONTROL(chan));
-	if (en)
-		value |= DMA_CONTROL_SPH;
-	else
-		value &= ~DMA_CONTROL_SPH;
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_CONTROL(chan));
-}
-
-static int dwmac4_enable_tbs(void  *ioaddr, bool en, uint32_t chan)
-{
-	uint32_t value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
-
-	if (en)
-		value |= DMA_CONTROL_EDSE;
-	else
-		value &= ~DMA_CONTROL_EDSE;
-
-	rte_write32(value, (uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan));
-
-	value = rte_read32((uint8_t *)ioaddr + DMA_CHAN_TX_CONTROL(chan)) & DMA_CONTROL_EDSE;
-	if (en && !value)
-		return -EIO;
-
-	rte_write32(DMA_TBS_DEF_FTOS, (uint8_t *)ioaddr + DMA_TBS_CTRL);
-	return 0;
+	writel(value, ioaddr + DMA_CHAN_RX_CONTROL(chan));
 }
 
 const struct stmmac_dma_ops dwmac4_dma_ops = {
@@ -520,7 +493,6 @@ const struct stmmac_dma_ops dwmac4_dma_ops = {
 	.enable_tso = dwmac4_enable_tso,
 	.qmode = dwmac4_qmode,
 	.set_bfsize = dwmac4_set_bfsize,
-	.enable_sph = dwmac4_enable_sph,
 };
 
 const struct stmmac_dma_ops dwmac410_dma_ops = {
@@ -549,6 +521,4 @@ const struct stmmac_dma_ops dwmac410_dma_ops = {
 	.enable_tso = dwmac4_enable_tso,
 	.qmode = dwmac4_qmode,
 	.set_bfsize = dwmac4_set_bfsize,
-	.enable_sph = dwmac4_enable_sph,
-	.enable_tbs = dwmac4_enable_tbs,
 };

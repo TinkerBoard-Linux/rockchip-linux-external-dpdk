@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2022 Fuzhou Rockchip Electronics Co., Ltd
  */
-// stmmac HW Interface Callbacks
-
 #ifndef __STMMAC_HWIF_H__
 #define __STMMAC_HWIF_H__
 
