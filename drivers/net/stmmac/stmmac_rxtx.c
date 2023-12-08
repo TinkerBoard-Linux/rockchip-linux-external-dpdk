@@ -85,6 +85,10 @@ stmmac_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		mbuf = rx_q->rx_mbuf[entry];
 
 		data = rte_pktmbuf_mtod(mbuf, uint8_t *);
+		for (i = 0; i <= STMMAC_ALIGN_LENGTH; i += 64) {
+			dcivac((uint8_t *)data + i);
+		}
+		dsb(sy);
 
 		rte_prefetch0(data);
 
