@@ -43,6 +43,19 @@
 #include "base/e1000_api.h"
 #include "e1000_ethdev.h"
 
+#define dcbf(p) { asm volatile("dc cvac, %0" : : "r"(p) : "memory"); }
+
+extern uint32_t		igb_gbd_addr_b_p[4];
+extern uint32_t		igb_gbd_addr_r_p[4];
+extern uint32_t		igb_gbd_addr_t_p[4];
+extern uint32_t		igb_gbd_addr_x_p[4];
+
+extern void			*igb_gbd_addr_b_v[4];
+extern void			*igb_gbd_addr_t_v[4];
+extern void			*igb_gbd_addr_r_v[4];
+extern void			*igb_gbd_addr_x_v[4];
+extern uint64_t base_hw_addr;
+
 #ifdef RTE_LIBRTE_IEEE1588
 #define IGB_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else
@@ -400,6 +413,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t new_ctx = 0;
 	uint32_t ctx = 0;
 	union igb_tx_offload tx_offload = {0};
+	uint8_t *data;
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -573,6 +587,11 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (txe->mbuf != NULL)
 				rte_pktmbuf_free_seg(txe->mbuf);
 			txe->mbuf = m_seg;
+
+			data = rte_pktmbuf_mtod(m_seg, uint8_t *);
+			for (int i = 0; i < m_seg->data_len; i += 64) {
+				dcbf(data + i);
+			}
 
 			/*
 			 * Set up transmit descriptor.
@@ -1491,6 +1510,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	struct e1000_hw     *hw;
 	uint32_t size;
 	uint64_t offloads;
+	uint64_t index;
 
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
@@ -1563,6 +1583,16 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tx_ring_phys_addr = tz->iova;
 
 	txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
+
+	index = ((uint64_t)hw->hw_addr - base_hw_addr) / 0x104000;
+	txq->tx_ring_phys_addr = igb_gbd_addr_t_p[index];
+	txq->tx_ring = (union e1000_adv_tx_desc *)igb_gbd_addr_t_v[index];
+	printf("hw tx ring size: %d:%ld[0x%lx:%p]\n",
+							size,
+							sizeof(union e1000_adv_tx_desc),
+							txq->tx_ring_phys_addr,
+							txq->tx_ring);
+
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc("txq->sw_ring",
 				   sizeof(struct igb_tx_entry) * nb_desc,
@@ -1690,6 +1720,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	struct e1000_hw     *hw;
 	unsigned int size;
 	uint64_t offloads;
+	uint64_t index;
 
 	offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
@@ -1755,6 +1786,15 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(rxq->reg_idx));
 	rxq->rx_ring_phys_addr = rz->iova;
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
+
+	index = ((uint64_t)hw->hw_addr - base_hw_addr) / 0x104000;
+	rxq->rx_ring_phys_addr = igb_gbd_addr_r_p[index];
+	rxq->rx_ring = (union e1000_adv_rx_desc *)igb_gbd_addr_r_v[index];
+	printf("hw rx ring size: %d:%ld[0x%lx:%p]\n",
+							size,
+							sizeof(union e1000_adv_rx_desc),
+							rxq->rx_ring_phys_addr,
+							rxq->rx_ring);
 
 	/* Allocate software ring. */
 	rxq->sw_ring = rte_zmalloc("rxq->sw_ring",

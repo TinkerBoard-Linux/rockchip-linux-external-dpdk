@@ -708,6 +708,23 @@ static int igb_flex_filter_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int uio_cnt = 0;;
+uint64_t base_hw_addr = 0;
+static int rconfig_e1000_uio(uint64_t hw_addr);
+uint32_t		igb_gbd_addr_b_p[4];
+uint32_t		igb_gbd_addr_r_p[4];
+uint32_t		igb_gbd_addr_t_p[4];
+uint32_t		igb_gbd_addr_x_p[4];
+
+void			*igb_gbd_addr_b_v[4];
+void			*igb_gbd_addr_t_v[4];
+void			*igb_gbd_addr_r_v[4];
+void			*igb_gbd_addr_x_v[4];
+
+unsigned int		igb_gbd_b_size[4];
+unsigned int		igb_gbd_r_size[4];
+unsigned int		igb_gbd_t_size[4];
+unsigned int		igb_gbd_x_size[4];
 static int
 eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -723,6 +740,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
 
 	uint32_t ctrl_ext;
+	uint64_t index;
 
 	eth_dev->dev_ops = &eth_igb_ops;
 	eth_dev->rx_queue_count = eth_igb_rx_queue_count;
@@ -744,6 +762,17 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->hw_addr= (void *)pci_dev->mem_resource[0].addr;
+	//hw->hw_addr= gbd_addr_b_v;
+
+	printf("eth_igb_dev_init\n");
+	if (rconfig_e1000_uio((uint64_t)hw->hw_addr)) {
+		error = -EIO;
+		goto err_late;
+	}
+
+	index = ((uint64_t)hw->hw_addr - base_hw_addr) / 0x104000;
+	printf("addr1 %p:%p\n", pci_dev->mem_resource[0].addr, igb_gbd_addr_b_v[index]);
+	printf("addr2 0x%lx:0x%x\n", pci_dev->mem_resource[0].phys_addr, igb_gbd_addr_b_p[index]);
 
 	igb_identify_hardware(eth_dev, pci_dev);
 	if (e1000_setup_init_funcs(hw, FALSE) != E1000_SUCCESS) {
@@ -895,6 +924,220 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	eth_igb_close(eth_dev);
+
+	return 0;
+}
+#include <sys/mman.h>
+#include <fcntl.h>
+
+#define E1000_UIO_MAX_DEVICE_FILE_NAME_LENGTH	30
+#define E1000_UIO_MAX_ATTR_FILE_NAME	100
+
+struct uio_job {
+	uint32_t fec_id;
+	int uio_fd;
+	void *bd_start_addr;
+	void *register_base_addr;
+	int map_size;
+	uint64_t map_addr;
+	int uio_minor_number;
+};
+static struct uio_job guio_job;
+
+/*
+ * @brief Reads first line from a file.
+ * Composes file name as: root/subdir/filename
+ *
+ * @param [in]  root     Root path
+ * @param [in]  subdir   Subdirectory name
+ * @param [in]  filename File name
+ * @param [out] line     The first line read from file.
+ *
+ * @retval 0 for success
+ * @retval other value for error
+ */
+static int
+file_read_first_line(const char root[], const char subdir[],
+			const char filename[], char *line)
+{
+	char absolute_file_name[E1000_UIO_MAX_ATTR_FILE_NAME];
+	int fd = 0, ret = 0;
+
+	/*compose the file name: root/subdir/filename */
+	memset(absolute_file_name, 0, sizeof(absolute_file_name));
+	snprintf(absolute_file_name, E1000_UIO_MAX_ATTR_FILE_NAME,
+		"%s/%s/%s", root, subdir, filename);
+
+	fd = open(absolute_file_name, O_RDONLY);
+	if (fd <= 0)
+		printf("Error opening file %s\n", absolute_file_name);
+
+	/* read UIO device name from first line in file */
+	ret = read(fd, line, E1000_UIO_MAX_DEVICE_FILE_NAME_LENGTH);
+	if (ret <= 0) {
+		printf("Error reading file %s\n", absolute_file_name);
+		return ret;
+	}
+	close(fd);
+
+	/* NULL-ify string */
+	line[ret] = '\0';
+
+	return 0;
+}
+
+/*
+ * @brief Maps rx-tx bd range assigned for a bd ring.
+ *
+ * @param [in] uio_device_fd    UIO device file descriptor
+ * @param [in] uio_device_id    UIO device id
+ * @param [in] uio_map_id       UIO allows maximum 5 different mapping for
+				each device. Maps start with id 0.
+ * @param [out] map_size        Map size.
+ * @param [out] map_addr	Map physical address
+ *
+ * @retval  NULL if failed to map registers
+ * @retval  Virtual address for mapped register address range
+ */
+static void *
+guio_map_mem(int uio_device_fd, int uio_device_id,
+		int uio_map_id, int *map_size, uint64_t *map_addr)
+{
+	void *mapped_address = NULL;
+	unsigned int uio_map_size = 0;
+	unsigned int uio_map_p_addr = 0;
+	char uio_sys_root[100];
+	char uio_sys_map_subdir[100];
+	char uio_map_size_str[30 + 1];
+	char uio_map_p_addr_str[32];
+	int ret = 0;
+
+	/* compose the file name: root/subdir/filename */
+	memset(uio_sys_root, 0, sizeof(uio_sys_root));
+	memset(uio_sys_map_subdir, 0, sizeof(uio_sys_map_subdir));
+	memset(uio_map_size_str, 0, sizeof(uio_map_size_str));
+	memset(uio_map_p_addr_str, 0, sizeof(uio_map_p_addr_str));
+
+	/* Compose string: /sys/class/uio/uioX */
+	snprintf(uio_sys_root, sizeof(uio_sys_root), "%s/%s%d",
+			"/sys/class/uio", "uio", uio_device_id);
+	/* Compose string: maps/mapY */
+	snprintf(uio_sys_map_subdir, sizeof(uio_sys_map_subdir), "%s%d",
+			"maps/map", uio_map_id);
+
+	printf("US_UIO: uio_map_mem uio_sys_root: %s, uio_sys_map_subdir: %s, uio_map_size_str: %s\n",
+			uio_sys_root, uio_sys_map_subdir, uio_map_size_str);
+
+	/* Read first (and only) line from file
+	 * /sys/class/uio/uioX/maps/mapY/size
+	 */
+	ret = file_read_first_line(uio_sys_root, uio_sys_map_subdir,
+				"size", uio_map_size_str);
+	if (ret < 0) {
+		printf("file_read_first_line() failed\n");
+		return NULL;
+	}
+	ret = file_read_first_line(uio_sys_root, uio_sys_map_subdir,
+				"addr", uio_map_p_addr_str);
+	if (ret < 0) {
+		printf("file_read_first_line() failed\n");
+		return NULL;
+	}
+
+	/* Read mapping size and physical address expressed in hexa(base 16) */
+	uio_map_size = strtol(uio_map_size_str, NULL, 16);
+	uio_map_p_addr = strtol(uio_map_p_addr_str, NULL, 16);
+	printf("size: 0x%x, addr: 0x%x\n", uio_map_size, uio_map_p_addr);
+
+	/* Map the BD memory in user space */
+	mapped_address = mmap(NULL, uio_map_size,
+			PROT_READ | PROT_WRITE,
+			MAP_SHARED, uio_device_fd, (uio_map_id * 4096));
+
+	if (mapped_address == MAP_FAILED) {
+		printf("Failed to map! errno = %d uio job fd = %d,"
+			"uio device id = %d, uio map id = %d\n", errno,
+			uio_device_fd, uio_device_id, uio_map_id);
+		return NULL;
+	}
+
+	/* Save the map size to use it later on for munmap-ing */
+	*map_size = uio_map_size;
+	*map_addr = uio_map_p_addr;
+
+	printf("UIO dev[%d] mapped region [id =%d] size 0x%x map_addr_p: 0x%lx, at %p\n",
+		uio_device_id, uio_map_id, uio_map_size, *map_addr, mapped_address);
+
+	printf("UIO dev[%d] mapped region [id =%d] size 0x%x at phy 0x%lx\n",
+		uio_device_id, uio_map_id, uio_map_size, rte_mem_virt2phy(mapped_address));
+
+	return mapped_address;
+}
+
+static int
+rconfig_e1000_uio(uint64_t hw_addr)
+{
+	char uio_device_file_name[32];
+	uint64_t addr;
+	int index;
+
+	printf("rconfig_e1000_uio\n");
+
+	if (base_hw_addr == 0) {
+		base_hw_addr = hw_addr;
+		addr = hw_addr;
+	} else {
+		addr = hw_addr;
+	}
+
+	index = (addr - base_hw_addr) / 0x104000;
+	printf("index: %d, hw_addr: 0x%lx, base_hw_addr: 0x%lx\n", index, addr, base_hw_addr);
+	if ((index < 0) && (index > 3))
+		return -1;
+
+	snprintf(uio_device_file_name, sizeof(uio_device_file_name), "/dev/uio%d",
+			uio_cnt);
+
+	/* Open device file */
+	guio_job.uio_fd = open(uio_device_file_name, O_RDWR);
+	if (guio_job.uio_fd < 0) {
+		printf("Unable to open rconfig_e1000_uio file\n");
+		return -1;
+	}
+
+	igb_gbd_addr_b_v[index] = guio_map_mem(guio_job.uio_fd,
+		uio_cnt, 0,
+		&guio_job.map_size, &guio_job.map_addr);
+	if (igb_gbd_addr_b_v[index] == NULL)
+		return -ENOMEM;
+	igb_gbd_addr_b_p[index] = (uint32_t)guio_job.map_addr;
+	igb_gbd_b_size[index] = guio_job.map_size;
+
+	igb_gbd_addr_r_v[index] = guio_map_mem(guio_job.uio_fd,
+		uio_cnt, 2,
+		&guio_job.map_size, &guio_job.map_addr);
+	if (igb_gbd_addr_r_v[index] == NULL)
+		return -ENOMEM;
+	igb_gbd_addr_r_p[index] = (uint32_t)guio_job.map_addr;
+	igb_gbd_r_size[index] = guio_job.map_size;
+
+	igb_gbd_addr_t_v[index] = guio_map_mem(guio_job.uio_fd,
+		uio_cnt, 3,
+		&guio_job.map_size, &guio_job.map_addr);
+	if (igb_gbd_addr_t_v[index] == NULL)
+		return -ENOMEM;
+	igb_gbd_addr_t_p[index] = (uint32_t)guio_job.map_addr;
+	igb_gbd_t_size[index] = guio_job.map_size;
+
+	igb_gbd_addr_x_v[index] = guio_map_mem(guio_job.uio_fd,
+		uio_cnt, 4,
+		&guio_job.map_size, &guio_job.map_addr);
+	if (igb_gbd_addr_x_v[index] == NULL)
+		return -ENOMEM;
+	igb_gbd_addr_x_p[index] = (uint32_t)guio_job.map_addr;
+	igb_gbd_x_size[index] = guio_job.map_size;
+
+	uio_cnt++;
 
 	return 0;
 }

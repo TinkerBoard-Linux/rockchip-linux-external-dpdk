@@ -17,6 +17,7 @@ drivers = [
         'dpaa',
         'dpaa2',
         'e1000',
+	'r8168'
         'ena',
         'enetc',
         'enetfec',
