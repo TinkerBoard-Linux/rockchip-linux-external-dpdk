@@ -704,8 +704,8 @@ rtl_dev_interrupt_handler(void *param)
 #define STMMAC_UIO_RX_BD1_MAP_ID	3
 #define STMMAC_UIO_TX_BD1_MAP_ID	4
 
-//intel 网卡先加载，占用uio0/1/2/3, rtl8111h从uio4开�?
-static int r8168_uio_cnt = 4;
+//The intel using /dev/uio0/1/2/3 and rtl8111h r8168_uio_cnt start from number 4.
+static int r8168_uio_cnt = 0;
 uint64_t r8168_base_hw_addr = 0;
 static int rconfig_stmmac_uio(uint64_t hw_addr);
 uint32_t		r8168_gbd_addr_b_p[5];
