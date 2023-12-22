@@ -24,7 +24,7 @@ stmmac_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 	struct stmmac_rx_queue *rx_q = (struct stmmac_rx_queue *)rxq;
 	struct rte_mempool *pool = rx_q->pool;
 	struct rte_mbuf *mbuf, *new_mbuf = NULL;
-	unsigned int entry = rx_q->cur_rx;
+	unsigned int entry;
 	unsigned int pkt_len;
 	int pkt_received = 0;
 	void *data, *new_data;
@@ -32,8 +32,12 @@ stmmac_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 	struct dma_desc *p;
 	int status, i;
 	dma_addr_t hw_addr;
+	uint32_t rx_tail_addr;
 
+	entry = rx_q->cur_rx;
 	stats = &rx_q->private->stats;
+	rx_tail_addr = rx_q->dma_rx_phy +
+		    (entry * sizeof(struct dma_desc));
 
 	/* check if managed by the DMA otherwise go ahead */
 	while (pkt_received < nb_pkts) {
@@ -103,6 +107,9 @@ stmmac_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		p->des1 = 0;
 		p->des0 = 0;
 
+		rx_tail_addr = rx_q->dma_rx_phy +
+				    (rx_q->cur_rx * sizeof(struct dma_desc));
+
 		rx_q->rx_mbuf[entry] = new_mbuf;
 		rx_q->cur_rx = STMMAC_GET_ENTRY(entry, rx_q->dma_rx_size);
 		/* Make sure the updates to rest of the descriptor are
@@ -112,12 +119,10 @@ stmmac_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		stmmac_set_rx_owner(rx_q->private, p, 1);
 	}
 
-	if (pkt_received) {
-		rx_q->rx_tail_addr = rx_q->dma_rx_phy +
-				    (rx_q->cur_rx * sizeof(struct dma_desc));
+	if (pkt_received)
+	{
 		wmb();
-		stmmac_set_rx_tail_ptr(rx_q->private, rx_q->private->ioaddr_v, rx_q->rx_tail_addr, 0);
-
+		stmmac_set_rx_tail_ptr(rx_q->private, rx_q->private->ioaddr_v, rx_tail_addr, 0);
 	}
 
 	return pkt_received;
@@ -135,7 +140,10 @@ stmmac_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	unsigned int pkt_transmitted = 0;
 	struct dma_desc *desc;
 	int status, tx_st = 1, i;
+	uint32_t tx_tail_addr;
 	void *txdata;
+
+	tx_tail_addr = tx_q->dma_tx_phy + (entry * desc_size);
 
 	stats = &tx_q->private->stats;
 	while (tx_st) {
@@ -191,6 +199,7 @@ stmmac_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 		dsb(sy);
 
+		tx_tail_addr = tx_q->dma_tx_phy + (tx_q->cur_tx * desc_size);
 		stmmac_set_desc_addr(tx_q->private, desc, rte_cpu_to_le_32(rte_pktmbuf_iova(mbuf)));
 
 		/* Prepare the first descriptor setting the OWN bit too */
@@ -199,9 +208,8 @@ stmmac_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	}
 
 	if (pkt_transmitted) {
-		tx_q->tx_tail_addr = tx_q->dma_tx_phy + (tx_q->cur_tx * desc_size);
 		wmb();
-		stmmac_set_tx_tail_ptr(tx_q->private, tx_q->private->ioaddr_v, tx_q->tx_tail_addr, 0);
+		stmmac_set_tx_tail_ptr(tx_q->private, tx_q->private->ioaddr_v, tx_tail_addr, 0);
 	}
 
 	return pkt_transmitted;
